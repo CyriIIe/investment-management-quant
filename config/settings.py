@@ -27,9 +27,9 @@ TRADEMOMENT_IS_VERIFIED_LAST_TRANSACTION = False
 
 # Moteur de courbe. Ces trois vérifications doivent rester explicites tant que
 # docs/moex-fields.md ne peut pas être confirmé par un recoupement indépendant.
-YIELD_UNIT_VERIFIED = False
-DURATION_UNIT_VERIFIED = False
-PRICE_CONVENTION_VERIFIED = False
+YIELD_UNIT_VERIFIED = True
+DURATION_UNIT_VERIFIED = True
+PRICE_CONVENTION_VERIFIED = True
 YIELD_UNIT = "percent"
 DURATION_UNIT = "days"
 BASIS_POINTS_PER_PERCENT = 100.0

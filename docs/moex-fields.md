@@ -93,7 +93,48 @@ une date de dernière transaction.
 Aucun champ `LASTTRADEDATE` ou `TRADEDATE` explicite n'a été retourné dans
 `marketdata`.
 
-## Hypothèses non prouvées
+## Validation opérationnelle des conventions — 2026-09-16
+
+### Rendement : pourcentage annuel
+
+La méthodologie officielle MOEX définit `Y` comme le rendement à maturité « en
+pourcentage annuel » et utilise `Y / 100` dans ses formules. Le champ ISS
+retenu `EFFECTIVEYIELD` est donc stocké en pourcentage annuel : `13.2469`
+signifie `13.2469 %`, non `0.132469`.
+
+Source officielle : [Méthodologie MOEX](https://www.moex.com/files/43927heqa4mxe6xdq5xkkktdd7).
+
+### Duration : jours dans le champ ISS retenu
+
+La méthodologie définit la duration Macaulay financière `D` en années. Le
+champ ISS observé `marketdata_yields.DURATION` est en jours : dans le snapshot
+du 2026-09-16, `SU26207RMFS9` a `DURATION = 138`, pour une maturité le
+2027-02-03. Une valeur de 138 années est impossible ; elle est cohérente avec
+une duration d'environ 138 jours, proche des 140 jours jusqu'à maturité et de
+la date de règlement. Le moteur utilise donc ce champ en jours.
+
+Source de la définition financière : [Méthodologie MOEX](https://www.moex.com/files/43927heqa4mxe6xdq5xkkktdd7).
+
+### Prix : prix propre en pourcentage du nominal
+
+MOEX indique que le prix de marché des obligations est coté en pourcentage du
+nominal et le nomme prix propre. Sa méthodologie définit `P` comme le prix sans
+NCD et ajoute le NCD `A` séparément dans les formules (`P + A`). `LAST` est le
+prix de la dernière transaction ; il est donc retenu comme prix propre, en
+pourcentage du nominal, tandis que `ACCRUEDINT` reste distinct.
+
+Sources officielles : [prix de marché MOEX](https://www.moex.com/a3156) et
+[méthodologie de rendement](https://www.moex.com/files/43927heqa4mxe6xdq5xkkktdd7).
+
+### TRADEMOMENT reste non vérifié
+
+`TRADEMOMENT` n'est pas activé comme date de dernière transaction. Dans le
+snapshot collecté à `2026-09-16T12:02:53+00:00`, des valeurs `TRADEMOMENT`
+étaient `2026-09-16 14:47:xx`, postérieures à l'horodatage de collecte. Sans
+clarification de fuseau horaire ou de sémantique par MOEX, le filtre le marque
+comme donnée non vérifiée et l'exclut selon la politique configurée.
+
+## Hypothèses non prouvées — historique, remplacées le 2026-09-16
 
 Avant le prompt 5 de la Phase 1 (moteur de courbe), les points suivants doivent
 être vérifiés, sans les résoudre ici :

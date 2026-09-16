@@ -18,8 +18,14 @@ from db.database import create_database
 
 class CurveEngineTest(unittest.TestCase):
     def test_refuses_unverified_market_conventions(self) -> None:
-        with self.assertRaises(CurveEnginePreconditionError):
-            curve_engine.validate_market_conventions()
+        with patch.multiple(
+            settings,
+            YIELD_UNIT_VERIFIED=False,
+            DURATION_UNIT_VERIFIED=False,
+            PRICE_CONVENTION_VERIFIED=False,
+        ):
+            with self.assertRaises(CurveEnginePreconditionError):
+                curve_engine.validate_market_conventions()
 
     def test_robust_fit_and_residual_units_are_basis_points(self) -> None:
         durations = np.arange(1, settings.MIN_ELIGIBLE_BONDS_FOR_CURVE + 1, dtype=float)
