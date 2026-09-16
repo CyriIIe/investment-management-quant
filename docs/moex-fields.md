@@ -134,6 +134,55 @@ snapshot collecté à `2026-09-16T12:02:53+00:00`, des valeurs `TRADEMOMENT`
 clarification de fuseau horaire ou de sémantique par MOEX, le filtre le marque
 comme donnée non vérifiée et l'exclut selon la politique configurée.
 
+## Validation de TRADEMOMENT et fraîcheur de séance — 2026-09-16
+
+### Ce qui est vérifié et ce qui ne l'est pas
+
+La documentation officielle consultée définit `LAST` comme le prix de la
+dernière transaction et `TIME` comme l'heure de cette transaction. Elle définit
+également `NUMTRADES` comme le nombre de transactions du jour, `VOLTODAY` comme
+le volume quotidien en titres, et `VALTODAY` comme le volume quotidien dans la
+devise de règlement. En revanche, aucune définition officielle explicite de
+`TRADEMOMENT` n'a été trouvée dans la documentation ISS/ASTS consultée.
+
+Deux cycles réels confirment que les valeurs sont compatibles avec une heure de
+marché Moscow time (GMT+3) servie par ISS avec retard : le second cycle a été
+horodaté à `2026-09-16T12:33:33+00:00`, et les `TRADEMOMENT` observés étaient
+autour de `2026-09-16 15:18:xx`. Converties de MSK vers UTC, elles précèdent la
+collecte d'environ quinze minutes. Cette cohérence est compatible avec le délai
+public ISS, mais n'est pas une documentation de la sémantique du champ.
+
+`TRADEMOMENT` reste donc **non vérifié** et n'est pas présenté comme une preuve
+de dernière transaction à la minute.
+
+Sources : [interface ISS](https://www.moex.com/a8531),
+[description ASTS des champs de marché](https://ftp.moex.com/pub/ClientsAPI/Spectra/CGate/prod/Scheme/6.18/docs/p2micexgate_en.pdf),
+et [horaires du marché actions/obligations, GMT+3](https://www.moex.com/torgovye-sessii-na-fondovom-rynke).
+
+### Règle alternative de fraîcheur retenue
+
+Quand `TRADEMOMENT_IS_VERIFIED_LAST_TRANSACTION = False`, le filtre ne tente
+pas de calculer un âge de transaction. Il exige plutôt une activité vérifiée de
+la séance : `NUMTRADES > 0` et `VOLTODAY > 0`, puis applique les seuils
+configurables `MIN_SESSION_TRANSACTIONS` et `MIN_SESSION_VOLUME`.
+
+Cette règle établit seulement qu'au moins une transaction a eu lieu dans la
+séance en cours ; elle ne prétend jamais prouver une transaction récente à la
+minute. Les titres dont ces données sont absentes ou nulles sont signalés
+distinctement. Le spread est calculé à partir de `BID` et `OFFER` uniquement
+lorsque les deux valeurs sont présentes.
+
+`VALTODAY` est officiellement une valeur de séance utile comme contrôle
+supplémentaire, mais il n'est pas actuellement conservé dans `snapshots` ; il
+ne participe donc pas au filtre historique actuel.
+
+### Résultat opérationnel
+
+Avec cette règle sur le dernier cycle complet : 36 OFZ-PD ont été collectées,
+31 sont éligibles et 5 sont exclues. Le fit robuste a utilisé 31 titres et a
+produit une RMSE de 23,08 bp. Les z-scores sont `NULL` au démarrage, faute
+d'historique propre à chaque obligation, conformément à la règle du moteur.
+
 ## Hypothèses non prouvées — historique, remplacées le 2026-09-16
 
 Avant le prompt 5 de la Phase 1 (moteur de courbe), les points suivants doivent

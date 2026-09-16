@@ -9,11 +9,37 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from config import settings
 from db.database import create_database
 from universe import select_eligible_universe, store_liquidity_selection
 
 
 class EligibleUniverseTest(unittest.TestCase):
+    def test_unverified_trademoment_uses_session_activity_without_claiming_minute_freshness(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "test.sqlite3"
+            create_database(database_path)
+            with sqlite3.connect(database_path) as connection:
+                connection.execute("PRAGMA foreign_keys = ON")
+                connection.execute("INSERT INTO bonds (secid, nom, type) VALUES ('ACTIVE', 'Active', 'OFZ-PD')")
+                connection.execute("INSERT INTO collection_runs (collection_run_id, started_at, status) VALUES ('done', ?, 'completed')", ("2026-09-16T00:00:00+00:00",))
+                connection.execute(
+                    """INSERT INTO snapshots (collection_run_id, secid, timestamp, date_derniere_transaction,
+                       volume, nb_transactions, bid, ask) VALUES ('done', 'ACTIVE', ?, ?, 1000, 5, 100, 100.1)""",
+                    ("2026-09-16T12:00:00+00:00", "2026-09-16 15:00:00"),
+                )
+                connection.commit()
+            with patch.multiple(
+                settings,
+                TRADEMOMENT_IS_VERIFIED_LAST_TRANSACTION=False,
+                USE_SESSION_ACTIVITY_WHEN_TRADE_TIMESTAMP_UNVERIFIED=True,
+            ):
+                selection = select_eligible_universe(
+                    str(database_path), "2026-09-16T12:00:00+00:00"
+                )[0]
+            self.assertTrue(selection.eligible)
+            self.assertIn("date_derniere_transaction_non_verifiee", selection.unavailable_data)
+
     def test_uses_only_completed_cycles_and_distinguishes_missing_from_zero(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             database_path = Path(directory) / "test.sqlite3"

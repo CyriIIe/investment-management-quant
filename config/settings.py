@@ -24,6 +24,10 @@ REJECT_IF_REQUIRED_LIQUIDITY_DATA_UNAVAILABLE = True
 # TRADEMOMENT est stocké à titre de proxy, mais sa sémantique "dernière
 # transaction" doit être confirmée avant toute utilisation dans le filtre.
 TRADEMOMENT_IS_VERIFIED_LAST_TRANSACTION = False
+# Lorsque TRADEMOMENT n'est pas documenté, l'activité de séance confirme qu'au
+# moins une transaction a eu lieu aujourd'hui, sans prétendre la dater à la minute.
+USE_SESSION_ACTIVITY_WHEN_TRADE_TIMESTAMP_UNVERIFIED = True
+REQUIRE_POSITIVE_SESSION_ACTIVITY = True
 
 # Moteur de courbe. Ces trois vérifications doivent rester explicites tant que
 # docs/moex-fields.md ne peut pas être confirmé par un recoupement indépendant.

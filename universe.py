@@ -77,7 +77,7 @@ def _selection_for_snapshot(
     last_transaction = snapshot["date_derniere_transaction"]
     if not settings.TRADEMOMENT_IS_VERIFIED_LAST_TRANSACTION:
         unavailable_data.append("date_derniere_transaction_non_verifiee")
-        if settings.REJECT_IF_REQUIRED_LIQUIDITY_DATA_UNAVAILABLE:
+        if not settings.USE_SESSION_ACTIVITY_WHEN_TRADE_TIMESTAMP_UNVERIFIED:
             rejection_reasons.append("date_derniere_transaction_non_verifiee")
     elif last_transaction is None:
         unavailable_data.append("date_derniere_transaction_absente")
@@ -112,6 +112,14 @@ def _selection_for_snapshot(
         scores.append(min(1.0, transactions / settings.MIN_SESSION_TRANSACTIONS))
         if transactions < settings.MIN_SESSION_TRANSACTIONS:
             rejection_reasons.append("nb_transactions_insuffisant")
+
+    if (
+        not settings.TRADEMOMENT_IS_VERIFIED_LAST_TRANSACTION
+        and settings.USE_SESSION_ACTIVITY_WHEN_TRADE_TIMESTAMP_UNVERIFIED
+        and settings.REQUIRE_POSITIVE_SESSION_ACTIVITY
+        and (volume is None or transactions is None or volume <= 0 or transactions <= 0)
+    ):
+        rejection_reasons.append("activite_session_non_confirmee")
 
     bid, ask = snapshot["bid"], snapshot["ask"]
     if bid is None or ask is None:
