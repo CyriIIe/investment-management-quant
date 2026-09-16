@@ -1,0 +1,23 @@
+{
+  "securities": {
+    "columns": ["SECID", "ISIN", "SECNAME", "LATNAME", "MATDATE", "COUPONPERCENT"],
+    "data": [
+      ["SU26207RMFS9", "RU000A0JS3W6", "ОФЗ-ПД 26207 03/02/27", "OFZ-PD 26207", "2027-02-03", 8.15],
+      ["SU52005RMFS4", "RU000A0ZZZZ0", "ОФЗ-ИН 52005", "OFZ-IN 52005", "2033-05-11", 2.5]
+    ]
+  },
+  "marketdata": {
+    "columns": ["SECID", "LAST", "VOLTODAY", "NUMTRADES", "BID", "OFFER"],
+    "data": [
+      ["SU26207RMFS9", 98.29, 21980, 312, 98.251, 98.29],
+      ["SU52005RMFS4", 99.0, 100, 2, 98.9, 99.1]
+    ]
+  },
+  "marketdata_yields": {
+    "columns": ["SECID", "EFFECTIVEYIELD", "DURATION", "TRADEMOMENT"],
+    "data": [
+      ["SU26207RMFS9", 13.2439, 138, "2026-09-16 14:07:50"],
+      ["SU52005RMFS4", 5.1, 2000, "2026-09-16 14:08:00"]
+    ]
+  }
+}
