@@ -54,7 +54,9 @@ def _latest_completed_snapshots(
             FROM snapshots
             JOIN collection_runs
                 ON collection_runs.collection_run_id = snapshots.collection_run_id
+            JOIN bonds ON bonds.secid = snapshots.secid
             WHERE collection_runs.status = 'completed'
+              AND bonds.type = 'OFZ-PD'
               AND snapshots.timestamp <= ?
         )
         SELECT * FROM ranked_snapshots WHERE row_number = 1

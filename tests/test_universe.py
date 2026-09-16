@@ -21,8 +21,14 @@ class EligibleUniverseTest(unittest.TestCase):
             with sqlite3.connect(database_path) as connection:
                 connection.execute("PRAGMA foreign_keys = ON")
                 connection.executemany(
-                    "INSERT INTO bonds (secid, nom, type) VALUES (?, ?, 'OFZ-PD')",
-                    [("GOOD", "Good"), ("MISSING", "Missing"), ("ZERO", "Zero"), ("RUNNING", "Running")],
+                    "INSERT INTO bonds (secid, nom, type) VALUES (?, ?, ?)",
+                    [
+                        ("GOOD", "Good", "OFZ-PD"),
+                        ("MISSING", "Missing", "OFZ-PD"),
+                        ("ZERO", "Zero", "OFZ-PD"),
+                        ("RUNNING", "Running", "OFZ-PD"),
+                        ("PK", "Floating", "OFZ-PK"),
+                    ],
                 )
                 connection.executemany(
                     "INSERT INTO collection_runs (collection_run_id, started_at, status) VALUES (?, ?, ?)",
@@ -39,6 +45,7 @@ class EligibleUniverseTest(unittest.TestCase):
                         ("complete", "GOOD", "2026-09-16T12:00:00+00:00", "2026-09-16T11:00:00+00:00", 1000, 5, 100.0, 100.1),
                         ("complete", "MISSING", "2026-09-16T12:00:00+00:00", "2026-09-16T11:00:00+00:00", None, 5, 100.0, 100.1),
                         ("complete", "ZERO", "2026-09-16T12:00:00+00:00", "2026-09-16T11:00:00+00:00", 0, 5, 100.0, 100.1),
+                        ("complete", "PK", "2026-09-16T12:00:00+00:00", "2026-09-16T11:00:00+00:00", 1000, 5, 100.0, 100.1),
                         ("partial", "RUNNING", "2026-09-16T12:00:00+00:00", "2026-09-16T11:00:00+00:00", 1000, 5, 100.0, 100.1),
                     ],
                 )

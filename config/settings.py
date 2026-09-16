@@ -24,3 +24,20 @@ REJECT_IF_REQUIRED_LIQUIDITY_DATA_UNAVAILABLE = True
 # TRADEMOMENT est stocké à titre de proxy, mais sa sémantique "dernière
 # transaction" doit être confirmée avant toute utilisation dans le filtre.
 TRADEMOMENT_IS_VERIFIED_LAST_TRANSACTION = False
+
+# Moteur de courbe. Ces trois vérifications doivent rester explicites tant que
+# docs/moex-fields.md ne peut pas être confirmé par un recoupement indépendant.
+YIELD_UNIT_VERIFIED = False
+DURATION_UNIT_VERIFIED = False
+PRICE_CONVENTION_VERIFIED = False
+YIELD_UNIT = "percent"
+DURATION_UNIT = "days"
+BASIS_POINTS_PER_PERCENT = 100.0
+
+MIN_ELIGIBLE_BONDS_FOR_CURVE = 8
+CURVE_POLYNOMIAL_DEGREE = 2
+CURVE_ROBUST_LOSS = "soft_l1"
+CURVE_ROBUST_F_SCALE = 0.10
+MIN_RESIDUAL_HISTORY_POINTS = 5
+ROBUST_MAD_SCALE = 1.4826
+TOP_RESIDUALS_COUNT = 10
