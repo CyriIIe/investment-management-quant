@@ -1,0 +1,13 @@
+[Unit]
+Description=Collecte MOEX et calcul quotidien de la courbe OFZ-PD
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=user
+Group=user
+WorkingDirectory=/home/user/investment-management-quant
+Environment=TZ=Europe/Moscow
+ExecStart=/home/user/investment-management-quant/scripts/run_daily_cycle.sh
+UMask=027

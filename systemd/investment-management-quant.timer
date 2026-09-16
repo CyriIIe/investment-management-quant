@@ -1,0 +1,10 @@
+[Unit]
+Description=Cycle quotidien MOEX après la clôture OFZ
+
+[Timer]
+OnCalendar=*-*-* 23:55:00 Europe/Moscow
+Persistent=true
+Unit=investment-management-quant.service
+
+[Install]
+WantedBy=timers.target
