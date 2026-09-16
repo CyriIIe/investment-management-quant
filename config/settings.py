@@ -12,3 +12,15 @@ REQUEST_INTERVAL_SECONDS = 1.1
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_RETRY_ATTEMPTS = 3
 RETRY_BACKOFF_SECONDS = 1.0
+
+# Univers de courbe : VOLTODAY et NUMTRADES décrivent la séance courante,
+# pas une période historique. Tous les seuils sont modifiables ici uniquement.
+MAX_DAYS_SINCE_LAST_TRANSACTION = 3.0
+MIN_SESSION_VOLUME = 1_000.0
+MIN_SESSION_TRANSACTIONS = 5
+MAX_BID_ASK_SPREAD = 0.25
+REJECT_IF_REQUIRED_LIQUIDITY_DATA_UNAVAILABLE = True
+
+# TRADEMOMENT est stocké à titre de proxy, mais sa sémantique "dernière
+# transaction" doit être confirmée avant toute utilisation dans le filtre.
+TRADEMOMENT_IS_VERIFIED_LAST_TRANSACTION = False
