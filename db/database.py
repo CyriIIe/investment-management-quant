@@ -9,9 +9,19 @@ from pathlib import Path
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
 
+def _migrate_snapshots_for_collection_runs(connection: sqlite3.Connection) -> None:
+    """Ajoute la traçabilité de cycle aux bases créées avant cette colonne."""
+    columns = {
+        row[1] for row in connection.execute("PRAGMA table_info(snapshots)")
+    }
+    if columns and "collection_run_id" not in columns:
+        connection.execute("ALTER TABLE snapshots ADD COLUMN collection_run_id TEXT")
+
+
 def apply_schema(connection: sqlite3.Connection) -> None:
     """Applique le schéma sans modifier ni supprimer les snapshots existants."""
     connection.execute("PRAGMA foreign_keys = ON")
+    _migrate_snapshots_for_collection_runs(connection)
     connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
