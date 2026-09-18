@@ -40,31 +40,49 @@ def _as_utc(value: str) -> datetime:
 
 
 def _latest_completed_snapshots(
-    connection: sqlite3.Connection, calculation_timestamp: str
+    connection: sqlite3.Connection,
+    calculation_timestamp: str,
+    collection_run_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    source_run_id = collection_run_id or latest_completed_collection_run(
+        connection, calculation_timestamp
+    )
+    if source_run_id is None:
+        return []
     cursor = connection.execute(
         """
-        WITH ranked_snapshots AS (
-            SELECT
-                snapshots.*,
-                ROW_NUMBER() OVER (
-                    PARTITION BY snapshots.secid
-                    ORDER BY snapshots.timestamp DESC, snapshots.id DESC
-                ) AS row_number
-            FROM snapshots
-            JOIN collection_runs
-                ON collection_runs.collection_run_id = snapshots.collection_run_id
-            JOIN bonds ON bonds.secid = snapshots.secid
-            WHERE collection_runs.status = 'completed'
-              AND bonds.type = 'OFZ-PD'
-              AND snapshots.timestamp <= ?
-        )
-        SELECT * FROM ranked_snapshots WHERE row_number = 1
+        SELECT snapshots.*
+        FROM snapshots
+        JOIN collection_runs
+            ON collection_runs.collection_run_id = snapshots.collection_run_id
+        JOIN bonds ON bonds.secid = snapshots.secid
+        WHERE collection_runs.status = 'completed'
+          AND snapshots.collection_run_id = ?
+          AND bonds.type = 'OFZ-PD'
+          AND snapshots.timestamp <= ?
         """,
-        (calculation_timestamp,),
+        (source_run_id, calculation_timestamp),
     )
     columns = [description[0] for description in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def latest_completed_collection_run(
+    connection: sqlite3.Connection, calculation_timestamp: str
+) -> str | None:
+    """Retourne un cycle complet unique, sans combiner plusieurs collectes."""
+    row = connection.execute(
+        """
+        SELECT collection_run_id
+        FROM collection_runs
+        WHERE status = 'completed'
+          AND COALESCE(completed_at, started_at) <= ?
+        ORDER BY COALESCE(completed_at, started_at) DESC, collection_run_id DESC
+        LIMIT 1
+        """,
+        (calculation_timestamp,),
+    ).fetchone()
+    return row[0] if row else None
 
 
 def _selection_for_snapshot(
@@ -146,12 +164,13 @@ def _selection_for_snapshot(
 def select_eligible_universe(
     database_path: str = str(settings.DATABASE_PATH),
     calculation_timestamp: str | None = None,
+    collection_run_id: str | None = None,
 ) -> list[LiquiditySelection]:
-    """Filtre les derniers snapshots de cycles complets disponibles à cet instant."""
+    """Filtre les snapshots d'un unique cycle complet disponible à cet instant."""
     _configure_console_logging()
     timestamp = calculation_timestamp or datetime.now(UTC).isoformat(timespec="seconds")
     with sqlite3.connect(database_path) as connection:
-        snapshots = _latest_completed_snapshots(connection, timestamp)
+        snapshots = _latest_completed_snapshots(connection, timestamp, collection_run_id)
 
     selections = [_selection_for_snapshot(snapshot, timestamp) for snapshot in snapshots]
     eligible_count = sum(selection.eligible for selection in selections)

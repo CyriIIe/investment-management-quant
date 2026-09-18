@@ -67,3 +67,29 @@ class CurveEngineTest(unittest.TestCase):
             ):
                 with self.assertRaises(CurveEnginePreconditionError):
                     curve_engine.run_curve_engine("2026-09-16T12:00:00+00:00")
+
+    def test_observations_do_not_mix_collection_cycles(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "curve.sqlite3"
+            create_database(database_path)
+            with sqlite3.connect(database_path) as connection:
+                connection.execute("PRAGMA foreign_keys = ON")
+                connection.executemany(
+                    "INSERT INTO bonds (secid, nom, type) VALUES (?, ?, 'OFZ-PD')",
+                    [("CURRENT", "Current"), ("STALE", "Stale")],
+                )
+                connection.executemany(
+                    "INSERT INTO collection_runs (collection_run_id, started_at, status) VALUES (?, ?, 'completed')",
+                    [("previous", "2026-09-16T00:00:00+00:00"), ("current", "2026-09-17T00:00:00+00:00")],
+                )
+                connection.executemany(
+                    """INSERT INTO snapshots (collection_run_id, secid, timestamp, rendement, duration)
+                       VALUES (?, ?, ?, 10.0, 365)""",
+                    [
+                        ("previous", "CURRENT", "2026-09-16T12:00:00+00:00"),
+                        ("previous", "STALE", "2026-09-16T12:00:00+00:00"),
+                        ("current", "CURRENT", "2026-09-17T12:00:00+00:00"),
+                    ],
+                )
+                observations = curve_engine._latest_completed_observations(connection, "current")
+            self.assertEqual([row["secid"] for row in observations], ["CURRENT"])

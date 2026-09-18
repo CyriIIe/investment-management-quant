@@ -103,3 +103,36 @@ class EligibleUniverseTest(unittest.TestCase):
                     "SELECT secid, eligible FROM curve_residuals WHERE curve_run_id = 'curve-1'"
                 ))
                 self.assertEqual(stored, {"GOOD": 1, "MISSING": 0, "ZERO": 0})
+
+    def test_does_not_reuse_a_snapshot_absent_from_latest_cycle(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database_path = Path(directory) / "test.sqlite3"
+            create_database(database_path)
+            with sqlite3.connect(database_path) as connection:
+                connection.execute("PRAGMA foreign_keys = ON")
+                connection.executemany(
+                    "INSERT INTO bonds (secid, nom, type) VALUES (?, ?, 'OFZ-PD')",
+                    [("CURRENT", "Current"), ("STALE", "Stale")],
+                )
+                connection.executemany(
+                    "INSERT INTO collection_runs (collection_run_id, started_at, completed_at, status) VALUES (?, ?, ?, 'completed')",
+                    [
+                        ("previous", "2026-09-16T00:00:00+00:00", "2026-09-16T12:00:00+00:00"),
+                        ("current", "2026-09-17T00:00:00+00:00", "2026-09-17T12:00:00+00:00"),
+                    ],
+                )
+                connection.executemany(
+                    """INSERT INTO snapshots (collection_run_id, secid, timestamp, volume, nb_transactions, bid, ask)
+                       VALUES (?, ?, ?, 1000, 5, 100, 100.1)""",
+                    [
+                        ("previous", "CURRENT", "2026-09-16T12:00:00+00:00"),
+                        ("previous", "STALE", "2026-09-16T12:00:00+00:00"),
+                        ("current", "CURRENT", "2026-09-17T12:00:00+00:00"),
+                    ],
+                )
+                connection.commit()
+
+            selections = select_eligible_universe(
+                str(database_path), "2026-09-17T12:00:00+00:00"
+            )
+            self.assertEqual([selection.secid for selection in selections], ["CURRENT"])

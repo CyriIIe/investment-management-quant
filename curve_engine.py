@@ -14,7 +14,12 @@ import numpy as np
 from scipy.optimize import least_squares
 
 from config import settings
-from universe import LiquiditySelection, select_eligible_universe, store_liquidity_selection
+from universe import (
+    LiquiditySelection,
+    latest_completed_collection_run,
+    select_eligible_universe,
+    store_liquidity_selection,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -99,21 +104,21 @@ def robust_zscore(residual_bp: float, history: list[float]) -> float | None:
     return (residual_bp - median) / (settings.ROBUST_MAD_SCALE * mad)
 
 
-def _latest_completed_observations(connection: sqlite3.Connection, timestamp: str) -> list[dict]:
+def _latest_completed_observations(
+    connection: sqlite3.Connection, collection_run_id: str
+) -> list[dict]:
     cursor = connection.execute(
         """
-        WITH latest AS (
-            SELECT snapshots.*, ROW_NUMBER() OVER (
-                PARTITION BY snapshots.secid ORDER BY snapshots.timestamp DESC, snapshots.id DESC
-            ) AS row_number
-            FROM snapshots JOIN collection_runs
-              ON collection_runs.collection_run_id = snapshots.collection_run_id
-            WHERE collection_runs.status = 'completed' AND snapshots.timestamp <= ?
-        )
-        SELECT latest.*, bonds.nom, bonds.type FROM latest JOIN bonds ON bonds.secid = latest.secid
-        WHERE latest.row_number = 1 AND bonds.type = 'OFZ-PD'
+        SELECT snapshots.*, bonds.nom, bonds.type
+        FROM snapshots
+        JOIN collection_runs
+          ON collection_runs.collection_run_id = snapshots.collection_run_id
+        JOIN bonds ON bonds.secid = snapshots.secid
+        WHERE collection_runs.status = 'completed'
+          AND snapshots.collection_run_id = ?
+          AND bonds.type = 'OFZ-PD'
         """,
-        (timestamp,),
+        (collection_run_id,),
     )
     columns = [item[0] for item in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -157,14 +162,21 @@ def run_curve_engine(calculation_timestamp: str | None = None) -> str:
     _configure_logging()
     validate_market_conventions()
     timestamp = calculation_timestamp or _timestamp()
-    selections = select_eligible_universe(str(settings.DATABASE_PATH), timestamp)
+    with sqlite3.connect(settings.DATABASE_PATH) as connection:
+        source_collection_run_id = latest_completed_collection_run(connection, timestamp)
+    if source_collection_run_id is None:
+        raise CurveEnginePreconditionError("Fit arrêté : aucun cycle de collecte complet disponible.")
+
+    selections = select_eligible_universe(
+        str(settings.DATABASE_PATH), timestamp, source_collection_run_id
+    )
     eligible_scores = {item.secid: item for item in selections if item.eligible}
 
     with sqlite3.connect(settings.DATABASE_PATH) as connection:
         connection.execute("PRAGMA foreign_keys = ON")
         observations = [
             row
-            for row in _latest_completed_observations(connection, timestamp)
+            for row in _latest_completed_observations(connection, source_collection_run_id)
             if row["secid"] in eligible_scores
             and row["rendement"] is not None
             and row["duration"] is not None
@@ -191,6 +203,7 @@ def run_curve_engine(calculation_timestamp: str | None = None) -> str:
                 "polynomial_degree": settings.CURVE_POLYNOMIAL_DEGREE,
                 "duration_unit": settings.DURATION_UNIT,
                 "yield_unit": settings.YIELD_UNIT,
+                "collection_run_id": source_collection_run_id,
             },
             sort_keys=True,
         )
